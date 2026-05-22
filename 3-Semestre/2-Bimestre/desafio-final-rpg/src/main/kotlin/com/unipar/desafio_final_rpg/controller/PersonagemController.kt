@@ -13,16 +13,10 @@ import org.springframework.web.bind.annotation.RestController
 // retornam dados direto no corpo da resposta (não renderiza páginas HTML)
 @RestController
 class PersonagemController (
-
     // Injeção de dependência via construtor (padrão do Spring/Kotlin)
     // O Spring cria e gerencia as instâncias de PersonagemService e RestClient
     val personagemService: PersonagemService,
-
-
 ) {
-
-
-
 
     @PostMapping("/salvar")
     fun salvarMeuPersonagem(@RequestBody personagem: Personagem) {
