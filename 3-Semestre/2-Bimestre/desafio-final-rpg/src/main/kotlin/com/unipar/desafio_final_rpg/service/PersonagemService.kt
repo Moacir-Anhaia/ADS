@@ -4,34 +4,40 @@ import com.unipar.desafio_final_rpg.model.Personagem
 import com.unipar.desafio_final_rpg.repository.PersonagemRepository
 import org.springframework.stereotype.Service
 
+// @Service: marca a classe como componente de servico
 @Service
-class PersonagemService (
+class PersonagemService(
+    // Injecao de dependencia via construtor
     val personagemRepository: PersonagemRepository
-){
-    /**
-     * CRUD do personagem
-     * */
-    //Salvar
-    fun salvar(personagem: Personagem) : Personagem {
-        //Se não tenho um Primary Key vou criar uma nova entidade
-        //se já tiver um nome igual no banco, somente vai editar
-        //Se tenho um Primary Key somente vou editar
+) {
+
+    fun salvar(personagem: Personagem): Personagem {
         return personagemRepository.save(personagem)
     }
 
-    //Buscar
-    fun buscarTodos(): List<Personagem>{
+    fun buscarTodos(): List<Personagem> {
         return personagemRepository.findAll()
     }
 
-    fun buscarPorNome(nome: String) : Personagem{
-        return personagemRepository.findById(nome).get()
+    fun buscarPorNome(nome: String): Personagem {
+        return personagemRepository.findByNome(nome)
+            .orElseThrow { NoSuchElementException("Personagem '$nome' nao encontrado no banco") }
     }
 
-    //Excluir
-    fun excluirPersonagem(nome: String) {
-        personagemRepository.deleteById(nome)
+    fun buscarPorId(id: Long): Personagem {
+        return personagemRepository.findById(id)
+            .orElseThrow { NoSuchElementException("Personagem com ID $id nao encontrado") }
     }
 
-    //PASSAR OS EXEMPLOS DA CONTROLADORA
+
+    fun editar(personagem: Personagem): Personagem {
+        // Verifica se o personagem existe antes de tentar editar
+        buscarPorId(personagem.id ?: throw IllegalArgumentException("ID nao informado para edicao"))
+        return personagemRepository.save(personagem)
+    }
+
+
+    fun excluir(id: Long) {
+        personagemRepository.deleteById(id)
+    }
 }

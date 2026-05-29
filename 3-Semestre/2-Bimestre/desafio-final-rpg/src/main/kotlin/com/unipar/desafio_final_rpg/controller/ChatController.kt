@@ -2,6 +2,7 @@ package com.unipar.desafio_final_rpg.controller
 
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.MediaType
+import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -9,57 +10,68 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.client.RestClient
-import java.util.Locale
 
+// @RestController: marca como controlador HTTP que retorna dados no corpo da resposta
+// @RequestMapping("/chat"): todos os endpoints desta classe comecam com /chat
 @RestController
 @RequestMapping("/chat")
 class ChatController(
-    // @Value injeta o valor da propriedade "rival.url" do application.properties
-    // Ex: rival.url=http://192.168.1.12:8080/ouvir
-    // Isso evita hardcodar IPs/URLs no código
-    @Value("\${rival.url}") private val rivalUrl: String,
+
+    // Injeta a URL do /chat/ouvir do rival definida em application.properties
+    @Value("\${rival.chat.url}") private val rivalChatUrl: String,
+
+    // RestClient: cliente HTTP para enviar mensagens ao servidor do rival
     val restClient: RestClient
+
 ) {
-    // @GetMapping: este endpoint responde a requisições HTTP GET em "/msg"
-    // Serve como o "gatilho" para enviar uma mensagem ao rival
-    // Uso: GET http://localhost:8080/msg?mensagem=Olá
-    @GetMapping("/msg")
-    fun mandarMensagemParaPersonagemRival() {
+    // Nome do jogador definido ao escolher a classe
+    // Formato: "Joao (Mago)"
+    var nomeJogador: String = ""
 
-        println("Digite seu nick:")
-        val nick = readLine()
-        var mensagem = ""
-        do {
-            mensagem = readln()
-            mensagem = "$nick: $mensagem"
-            try {
-                restClient.post()
-                    .uri(rivalUrl)
-                    .contentType(MediaType.TEXT_PLAIN)
-                    .body(mensagem)
-                    .retrieve()
-                    .toBodilessEntity()
-
-                "Mensagem enviada com sucesso!" // Retorno em caso de sucesso
-            } catch (e: Exception) {
-                println("Deu erro: ${e.message}")// Retorno em caso de erro
-            }
-            println("Deseja encerrar a conversa? S/N")
-            var acabou = readln().uppercase()
-        } while (acabou != "S")
-
-
+    @GetMapping("/definirNome")
+    fun definirNome(
+        @RequestParam nome: String,
+        @RequestParam classe: String
+    ): ResponseEntity<String> {
+        // Monta o identificador unico: "Joao (Mago)"
+        nomeJogador = "$nome ($classe)"
+        println("[CHAT] Nome do jogador definido: $nomeJogador")
+        return ResponseEntity.ok("Nome definido: $nomeJogador")
     }
-    // @PostMapping: este endpoint responde a requisições HTTP POST em "/ouvir"
-    // É aqui que esta máquina RECEBE mensagens enviadas pelo rival
-    // consumes: garante que só aceita requisições com Content-Type: text/plain
-    // (rejeita outros formatos como JSON ou XML com erro 415 Unsupported Media Type)
+
+
+    @GetMapping("/msg")
+    fun enviarMensagem(@RequestParam mensagem: String): ResponseEntity<String> {
+
+        if (nomeJogador.isEmpty()) {
+            return ResponseEntity.badRequest().body("Nome nao definido! Use /chat/definirNome primeiro.")
+        }
+
+
+        val msgFormatada = "$nomeJogador: $mensagem"
+        println("[CHAT] Enviando: $msgFormatada")
+
+        return try {
+
+            restClient.post()
+                .uri(rivalChatUrl)
+                .contentType(MediaType.TEXT_PLAIN)
+                .body(msgFormatada)
+                .retrieve()
+                .toBodilessEntity()
+
+            ResponseEntity.ok("Mensagem enviada: $msgFormatada")
+        } catch (e: Exception) {
+            println("[CHAT] Erro ao enviar: ${e.message}")
+            ResponseEntity.internalServerError().body("Erro ao enviar mensagem: ${e.message}")
+        }
+    }
+
 
     @PostMapping("/ouvir", consumes = [MediaType.TEXT_PLAIN_VALUE])
-    fun receberMensagemDoPersonagemRival(
-        // @RequestBody lê o corpo da requisição HTTP e mapeia para a variável
-        @RequestBody mensagem: String
-    ) {
-        println("Mensagem recebida do rival: $mensagem")
+    fun receberMensagem(@RequestBody mensagem: String): ResponseEntity<String> {
+        // Imprime a mensagem recebida no console para o jogador local ver
+        println("\n[CHAT] $mensagem\n")
+        return ResponseEntity.ok("ok")
     }
 }
